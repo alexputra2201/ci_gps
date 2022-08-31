@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Web Gis</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
         integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
@@ -38,91 +37,110 @@
 </body>
 
 <script>
-// L.esri.basemapLayer('Topographic').addTo(map);
-
-// Hybrid: s, h;
-// Satellite: s;
-// Streets: m;
-// Terrain: p;
-// L.tileLayer('http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
-//     maxZoom: 20,
-//     subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-// }).addTo(map);
-
-// //L.marker([0.5137908, 101.3711349]).addTo(map);
-
-// var MotelIcon = L.icon({
-//     iconUrl: 'assets/motel-2.png',
-
-//     iconSize: [38, 45], // size of the icon
-//     shadowSize: [50, 64], // size of the shadow
-//     iconAnchor: [22, 94], // point of the icon which will correspond to marker's location
-//     shadowAnchor: [4, 62], // the same for the shadow
-//     popupAnchor: [-3, -76] // point from which the popup should open relative to the iconAnchor
-// });
-
-
-
-
-
 $(document).ready(function() {
-    // console.log('test');
-    $.ajax({
-        url: 'http://localhost/ci_gps/index.php/map/get_data',
-        method: 'GET',
-        dataType: 'JSON',
-    }).done(res => {
+    const btnInsert = $('#btnInsertData');
+    var iconMarker = null;
+    var startLatLng = null;
+    var endLatLng = null;
 
-        let firstLat = res[0].lat;
-        let firstLng = res[0].lng;
+    var map = L.map('map').setView([0.514574, 101.419746], 17);
 
-        var arrData = [];
-
-        $.each(res, function(key, val) {
-
-            arrData.push([val.lat, val.lng]);
-            // console.log(`[${val.lat}, ${val.lng}]`);
-        });
-
-        // console.log(arrData);
+    L.tileLayer('http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    }).addTo(map);
 
 
-        var map = L.map('map').setView([firstLat, firstLng], 13);
-
-        L.tileLayer('http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
-            maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-        }).addTo(map);
-
-
-        var MotelIcon = L.icon({
-            iconUrl: 'http://localhost/ci_gps/assets/location.png',
-
-            iconSize: [64, 64], // size of the icon
-            shadowSize: [50, 64], // size of the shadow
-            iconAnchor: [22,
-                94
-            ], // point of the icon which will correspond to marker's location
-            shadowAnchor: [4, 62], // the same for the shadow
-            popupAnchor: [-3, -
-                76
-            ] // point from which the popup should open relative to the iconAnchor
-        });
-
-        L.marker([firstLat, firstLng], {
-            icon: MotelIcon
-        }).addTo(map);
-
-
-
-        // polyline
-        var latlngs = [arrData];
-
-        var polyline = L.polyline(latlngs, {
-            color: 'red'
-        }).addTo(map);
-
+    var iconLocation = L.icon({
+        iconUrl: 'assets/location.png',
+        iconSize: [64, 64],
     });
+
+
+
+    function init() {
+        $.ajax({
+            url: '<?= base_url('map/get_data'); ?>',
+            method: 'GET',
+            dataType: 'JSON',
+        }).done(function(res) {
+
+            // console.log(res.length == 0);
+            if (res.length == 0) {
+                return;
+            }
+
+            var startLatLng = res[0];
+            var endLatLng = res.length - 1;
+
+            var response = res;
+            var newArr = [];
+
+            for (var i = 0; i < response.length; i++) {
+                newArr.push([response[i].lat, response[i].lng]);
+            }
+
+            L.polyline(newArr, {
+                color: 'red'
+            }).addTo(map);
+
+
+
+            if (iconMarker === null) {
+                iconMarker = L.marker([res[endLatLng].lat, res[endLatLng].lng], {
+                    icon: iconLocation
+                }).addTo(map);
+            } else {
+                iconMarker.setLatLng([res[endLatLng].lat, res[endLatLng].lng]);
+            }
+
+        });
+    }
+
+    init();
+
+    setInterval(init, 1000);
+    $(function() {
+        init();
+    });
+
+
+    btnInsert.on('click', function(e) {
+        e.preventDefault();
+
+
+        $.ajax({
+            url: '<?= base_url('assets/data.json'); ?>',
+            method: 'POST',
+            dataType: 'JSON',
+
+        }).done(function(res) {
+
+            $.each(res.data, function(index, item) {
+                setTimeout(function() {
+
+                    insertToDB(item);
+                }, index * 3000);
+            });
+
+        })
+    });
+
+
+
+    function insertToDB(item) {
+        item = item;
+
+        $.ajax({
+            url: '<?= base_url('map/proses_save'); ?>',
+            method: 'POST',
+            data: {
+                item: item
+            },
+        }).done(function(res) {
+            console.log(res);
+        });
+    }
 
 });
 </script>
